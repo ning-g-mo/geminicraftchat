@@ -1,0 +1,87 @@
+# GeminiCraftChat 配置文件
+
+# API 设置
+api:
+  model: "gemini-pro"  # 模型名称
+  key: "your-api-key-here"  # API密钥（建议使用环境变量 GEMINI_API_KEY）
+  timeout: 30  # 请求超时时间（秒）
+  max_retries: 3  # 最大重试次数
+  retry_delay: 1000  # 重试间隔（毫秒）
+  rate_limit:
+    max_requests: 60  # 每分钟最大请求数
+    cooldown: 1000  # 请求间隔（毫秒）
+
+# 聊天设置
+chat:
+  trigger: "ai"  # 默认触发词
+  cooldown: 10000  # 消息冷却时间（毫秒）
+  max_history: 10  # 每个玩家保存的最大历史消息数
+  max_length: 500  # 最大消息长度
+  # 是否启用独立对话
+  independent_chat: true
+  # 消息格式
+  format:
+    thinking: "§7[AI] §f正在思考中..."
+    response: "§7[AI] §f%s"
+    error: "§c[AI] 发生错误：%s"
+  commands:
+    switch_persona: "切换人设"
+    set_persona: "设置人设"
+    change_model: "切换模型"
+    clear_history: "清除历史"
+    clear_all_history: "清除所有历史记录"  # 管理员命令
+
+# 伪人系统设置
+npc:
+  # 触发概率 (0-100)
+  trigger_chance: 15
+  # 是否启用记忆系统
+  enable_memory: true
+  # 最大记忆消息数
+  max_memory: 20
+  # 伪人列表
+  list:
+    alice:
+      name: "爱丽丝"
+      description: "一个活泼可爱的女孩"
+      personality: "你是一个名叫爱丽丝的16岁女孩，性格活泼开朗，说话方式可爱俏皮。你喜欢用可爱的语气和表情符号交谈。"
+      trigger_words: ["你好", "早上好", "晚上好"]
+    bob:
+      name: "鲍勃"
+      description: "一个严肃的管理员"
+      personality: "你是一个名叫鲍勃的服务器管理员，性格严谨认真。你说话方式正式，总是以帮助他人为己任。"
+      trigger_words: ["帮助", "规则", "问题"]
+
+# 权限设置
+permissions:
+  use: "gcc.use"
+  admin: "gcc.admin"
+  persona:
+    create: "gcc.persona.create"
+    edit: "gcc.persona.edit"
+    delete: "gcc.persona.delete"
+  bypass_cooldown: "gcc.bypass_cooldown"
+  npc:
+    manage: "gcc.npc.manage"
+    create: "gcc.npc.create"
+    edit: "gcc.npc.edit"
+    delete: "gcc.npc.delete"
+
+# 人设列表
+personas:
+  default:
+    name: "默认助手"
+    description: "一个友好的AI助手"
+    context: "你是一个友好的AI助手，会用简单易懂的方式回答问题。"
+
+# 敏感词设置
+word_filter:
+  enabled: true
+  words: []  # 敏感词列表
+  replacement: "***"  # 替换字符
+
+# 调试设置
+debug:
+  enabled: false
+  log_api_calls: false
+  log_chat_history: false 
