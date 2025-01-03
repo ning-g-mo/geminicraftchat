@@ -7,9 +7,29 @@ api:
   timeout: 30  # 请求超时时间（秒）
   max_retries: 3  # 最大重试次数
   retry_delay: 1000  # 重试间隔（毫秒）
+  # 中转API设置
+  proxy:
+    enabled: false  # 是否启用中转API
+    url: "http://your-proxy-api.com/v1/chat"  # 中转API地址
+    method: "POST"  # 请求方法
+    headers:  # 自定义请求头
+      Authorization: "Bearer ${PROXY_API_KEY}"  # 支持环境变量
+      Content-Type: "application/json"
+    request_format:  # 请求体格式
+      model: "${model}"  # 使用配置中的model值
+      messages: "${messages}"  # 消息内容
+      temperature: "${temperature}"  # 使用配置中的temperature值
+    response_format:  # 响应体格式
+      content_path: "choices[0].message.content"  # 响应内容的JSON路径
+      error_path: "error.message"  # 错误信息的JSON路径
   rate_limit:
     max_requests: 60  # 每分钟最大请求数
     cooldown: 1000  # 请求间隔（毫秒）
+  generation:
+    temperature: 0.7  # 生成温度 (0.0-1.0)，越高越有创意，越低越稳定
+    top_k: 40  # 取前K个最可能的词
+    top_p: 0.95  # 取概率和为P的词
+    max_output_tokens: 1024  # 最大输出长度
 
 # 聊天设置
 chat:
@@ -76,12 +96,36 @@ personas:
 
 # 敏感词设置
 word_filter:
-  enabled: true
+  enabled: true  # 是否启用敏感词过滤
   words: []  # 敏感词列表
   replacement: "***"  # 替换字符
 
 # 调试设置
 debug:
+  # 总开关
   enabled: false
-  log_api_calls: false
-  log_chat_history: false 
+  # 日志设置
+  log_api_calls: false  # 记录API调用
+  log_chat_history: false  # 记录聊天历史
+  log_level: INFO  # 日志级别：DEBUG, INFO, WARNING, ERROR
+  # 日志文件设置
+  file:
+    max_size: 10  # 单个日志文件最大大小（MB）
+    max_history: 7  # 保留的历史日志文件天数
+    compress: true  # 是否压缩历史日志
+  # 性能监控
+  performance:
+    log_slow_api_calls: true  # 记录慢API调用
+    slow_api_threshold: 1000  # 慢API调用阈值（毫秒）
+    log_memory_usage: false  # 记录内存使用情况
+    memory_check_interval: 300  # 内存检查间隔（秒）
+  # 错误追踪
+  error_tracking:
+    log_stack_trace: true  # 记录完整堆栈跟踪
+    log_error_context: true  # 记录错误发生时的上下文
+    notify_admin: true  # 错误发生时通知管理员
+  # 开发者选项
+  developer:
+    log_config_changes: true  # 记录配置文件变更
+    log_command_execution: true  # 记录命令执行
+    log_permission_checks: false  # 记录权限检查 

@@ -63,10 +63,9 @@ public class ChatListener implements Listener {
         }
         
         // 敏感词过滤
-        String filteredQuestion = plugin.getWordFilter().filter(question);
+        final String filteredQuestion = plugin.getWordFilter().filter(question);
         if (!filteredQuestion.equals(question)) {
             player.sendMessage("§c你的消息包含敏感词，已被过滤。");
-            question = filteredQuestion;
         }
         
         // 获取玩家当前使用的人设
@@ -77,30 +76,30 @@ public class ChatListener implements Listener {
         platform.sendMessage(player.getUniqueId(), thinkingFormat);
         
         // 异步调用API
-        plugin.getGeminiAPI().chatAsync(question, persona)
+        plugin.getGeminiAPI().chatAsync(filteredQuestion, persona)
             .thenAccept(response -> {
                 platform.runSync(() -> {
                     if (response.isSuccess()) {
                         String aiResponse = response.getMessage();
                         // 对AI响应也进行敏感词过滤
-                        aiResponse = plugin.getWordFilter().filter(aiResponse);
+                        final String filteredResponse = plugin.getWordFilter().filter(aiResponse);
                         
                         String responseFormat = plugin.getConfig().getString("chat.format.response", "§7[AI] §f%s");
                         platform.sendMessage(player.getUniqueId(), 
-                            String.format(responseFormat, aiResponse));
+                            String.format(responseFormat, filteredResponse));
                         plugin.getChatHistory().addMessage(
                             player.getUniqueId(), 
-                            question, 
-                            aiResponse
+                            filteredQuestion, 
+                            filteredResponse
                         );
                         // 记录成功的对话
-                        plugin.getChatLogger().logChat(player, question, aiResponse, true);
+                        plugin.getChatLogger().logChat(player, filteredQuestion, filteredResponse, true);
                     } else {
                         String errorFormat = plugin.getConfig().getString("chat.format.error", "§c[AI] 发生错误：%s");
                         platform.sendMessage(player.getUniqueId(), 
                             String.format(errorFormat, response.getError()));
                         // 记录错误
-                        plugin.getChatLogger().logError(player, question, 
+                        plugin.getChatLogger().logError(player, filteredQuestion, 
                             new RuntimeException(response.getError()));
                     }
                 });

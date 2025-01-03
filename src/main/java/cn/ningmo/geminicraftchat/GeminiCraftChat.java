@@ -22,6 +22,7 @@ public class GeminiCraftChat extends JavaPlugin {
     private ChatLogger chatLogger;
     private NPCManager npcManager;
     private WordFilter wordFilter;
+    private DebugLogger debugLogger;
     
     @Override
     public void onEnable() {
@@ -36,12 +37,14 @@ public class GeminiCraftChat extends JavaPlugin {
         this.personaManager = new PersonaManager(this);
         this.rateLimiter = new RateLimiter(getConfig().getLong("chat.cooldown"));
         this.chatHistory = new ChatHistory(
+            this,
             getConfig().getInt("chat.max_history"),
             getConfig().getBoolean("chat.independent_chat", true)
         );
         this.chatLogger = new ChatLogger(this);
         this.npcManager = new NPCManager(this);
         this.wordFilter = new WordFilter(this);
+        this.debugLogger = new DebugLogger(this);
         
         // 注册命令
         getCommand("gcc").setExecutor(new GCCCommand(this));
@@ -88,5 +91,9 @@ public class GeminiCraftChat extends JavaPlugin {
     
     public WordFilter getWordFilter() {
         return wordFilter;
+    }
+    
+    public DebugLogger getDebugLogger() {
+        return debugLogger;
     }
 } 
