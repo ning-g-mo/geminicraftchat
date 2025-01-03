@@ -1,77 +1,80 @@
 package cn.ningmo.geminicraftchat.chat;
 
 import cn.ningmo.geminicraftchat.GeminiCraftChat;
+import org.bukkit.entity.Player;
+
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ChatHistory {
-    private final int maxHistory;
-    private final Map<UUID, List<ChatMessage>> playerHistory;
-    private final boolean independentChat;
     private final GeminiCraftChat plugin;
-    
-    public ChatHistory(GeminiCraftChat plugin, int maxHistory, boolean independentChat) {
+    private final Map<String, LinkedList<String>> history;
+    private int maxHistory;
+    private boolean independentChat;
+
+    public ChatHistory(GeminiCraftChat plugin) {
         this.plugin = plugin;
-        this.maxHistory = maxHistory;
-        this.independentChat = independentChat;
-        this.playerHistory = new HashMap<>();
+        this.history = new ConcurrentHashMap<>();
+        reload();
     }
-    
-    public void addMessage(UUID playerId, String userMessage, String aiResponse) {
-        List<ChatMessage> history = playerHistory.computeIfAbsent(playerId, k -> new ArrayList<>());
+
+    /**
+     * 重新加载配置
+     */
+    public void reload() {
+        this.maxHistory = plugin.getConfig().getInt("chat.max_history", 10);
+        this.independentChat = plugin.getConfig().getBoolean("chat.independent_chat", true);
         
-        history.add(new ChatMessage(userMessage, aiResponse));
-        
-        while (history.size() > maxHistory) {
-            history.remove(0);
-        }
-    }
-    
-    public List<ChatMessage> getHistory(UUID playerId) {
-        List<ChatMessage> history;
-        if (!independentChat) {
-            // 如果不是独立对话，返回所有玩家的聊天记录合并
-            List<ChatMessage> allHistory = new ArrayList<>();
-            playerHistory.values().forEach(allHistory::addAll);
-            allHistory.sort(Comparator.comparingLong(ChatMessage::getTimestamp));
-            history = allHistory.subList(Math.max(0, allHistory.size() - maxHistory), allHistory.size());
-        } else {
-            history = playerHistory.getOrDefault(playerId, new ArrayList<>());
-        }
-        
-        // 记录调试日志
-        if (plugin.getDebugLogger().isLogChatHistory()) {
-            StringBuilder context = new StringBuilder();
-            for (ChatMessage msg : history) {
-                context.append("用户: ").append(msg.getUserMessage()).append("\n");
-                context.append("AI: ").append(msg.getAiResponse()).append("\n");
+        // 清理超出新限制的历史记录
+        history.values().forEach(list -> {
+            while (list.size() > maxHistory) {
+                list.removeFirst();
             }
-            plugin.getDebugLogger().logChatHistory(playerId.toString(), context.toString());
-        }
+        });
+    }
+
+    /**
+     * 添加聊天记录
+     */
+    public void addMessage(Player player, String message) {
+        String key = getHistoryKey(player);
+        history.computeIfAbsent(key, k -> new LinkedList<>());
+        LinkedList<String> playerHistory = history.get(key);
         
-        return history;
+        playerHistory.addLast(message);
+        while (playerHistory.size() > maxHistory) {
+            playerHistory.removeFirst();
+        }
     }
-    
-    public void clearHistory(UUID playerId) {
-        playerHistory.remove(playerId);
+
+    /**
+     * 获取聊天历史
+     */
+    public List<String> getHistory(Player player) {
+        String key = getHistoryKey(player);
+        return new ArrayList<>(history.getOrDefault(key, new LinkedList<>()));
     }
-    
+
+    /**
+     * 清除指定玩家的聊天历史
+     */
+    public void clearHistory(Player player) {
+        String key = getHistoryKey(player);
+        history.remove(key);
+    }
+
+    /**
+     * 清除所有聊天历史
+     */
     public void clearAllHistory() {
-        playerHistory.clear();
+        history.clear();
     }
-    
-    public static class ChatMessage {
-        private final String userMessage;
-        private final String aiResponse;
-        private final long timestamp;
-        
-        public ChatMessage(String userMessage, String aiResponse) {
-            this.userMessage = userMessage;
-            this.aiResponse = aiResponse;
-            this.timestamp = System.currentTimeMillis();
-        }
-        
-        public String getUserMessage() { return userMessage; }
-        public String getAiResponse() { return aiResponse; }
-        public long getTimestamp() { return timestamp; }
+
+    /**
+     * 获取历史记录键
+     * 如果启用了独立对话，则使用玩家UUID，否则使用固定键
+     */
+    private String getHistoryKey(Player player) {
+        return independentChat ? player.getUniqueId().toString() : "global";
     }
 } 

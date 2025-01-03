@@ -1,60 +1,57 @@
 package cn.ningmo.geminicraftchat.log;
 
 import cn.ningmo.geminicraftchat.GeminiCraftChat;
-import org.bukkit.entity.Player;
+import org.bukkit.configuration.ConfigurationSection;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.logging.Level;
 
 public class ChatLogger {
     private final GeminiCraftChat plugin;
     private final File logFolder;
     private final SimpleDateFormat dateFormat;
-    
+    private boolean enabled;
+    private String logFormat;
+
     public ChatLogger(GeminiCraftChat plugin) {
         this.plugin = plugin;
         this.logFolder = new File(plugin.getDataFolder(), "logs");
         this.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        reload();
         
         if (!logFolder.exists()) {
             logFolder.mkdirs();
         }
     }
-    
-    public void logChat(Player player, String message, String response, boolean success) {
-        String fileName = String.format("%s.log", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-        File logFile = new File(logFolder, fileName);
-        
-        try (PrintWriter writer = new PrintWriter(new FileWriter(logFile, true))) {
-            String timestamp = dateFormat.format(new Date());
-            writer.printf("[%s] %s (%s):\n", timestamp, player.getName(), player.getUniqueId());
-            writer.printf("Message: %s\n", message);
-            writer.printf("Success: %s\n", success);
-            writer.printf("Response: %s\n", response);
-            writer.println("----------------------------------------");
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.WARNING, "无法写入聊天日志", e);
+
+    public void reload() {
+        ConfigurationSection config = plugin.getConfig().getConfigurationSection("chat_log");
+        if (config == null) {
+            this.enabled = false;
+            this.logFormat = "[%time%] %player%: %message% -> %response%";
+            return;
         }
+
+        this.enabled = config.getBoolean("enabled", false);
+        this.logFormat = config.getString("format", "[%time%] %player%: %message% -> %response%");
     }
-    
-    public void logError(Player player, String message, Throwable error) {
-        String fileName = String.format("errors-%s.log", new SimpleDateFormat("yyyy-MM").format(new Date()));
+
+    public void logChat(String playerName, String message, String response) {
+        if (!enabled) return;
+
+        String fileName = String.format("chat-%s.log", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
         File logFile = new File(logFolder, fileName);
-        
+
         try (PrintWriter writer = new PrintWriter(new FileWriter(logFile, true))) {
-            String timestamp = dateFormat.format(new Date());
-            writer.printf("[%s] %s (%s):\n", timestamp, player.getName(), player.getUniqueId());
-            writer.printf("Message: %s\n", message);
-            writer.println("Error: ");
-            error.printStackTrace(writer);
-            writer.println("----------------------------------------");
+            String logEntry = logFormat
+                .replace("%time%", dateFormat.format(new Date()))
+                .replace("%player%", playerName)
+                .replace("%message%", message)
+                .replace("%response%", response);
+            writer.println(logEntry);
         } catch (IOException e) {
-            plugin.getLogger().log(Level.WARNING, "无法写入错误日志", e);
+            plugin.getLogger().warning("无法写入聊天日志: " + e.getMessage());
         }
     }
 } 

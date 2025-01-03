@@ -2,27 +2,22 @@ name: GeminiCraftChat
 version: '${project.version}'
 main: cn.ningmo.geminicraftchat.GeminiCraftChat
 api-version: '1.20'
-authors: [ningmo]
+author: NingmoDev
 description: 一个基于 Gemini API 的 Minecraft 聊天 AI 插件
 
 commands:
   gcc:
     description: GeminiCraftChat 主命令
-    usage: |
-      §6=== GeminiCraftChat 帮助 ===
-      §e/gcc help §7- 显示此帮助
-      §e/gcc reload §7- 重新加载配置
-      §e/gcc persona <list|set|create|delete> §7- 人设管理
-      §e/gcc model <list|set> §7- 模型管理
-      §e/gcc clear [all] §7- 清除聊天历史
-      §e/gcc filter <add|remove|list|enable|disable> §7- 敏感词管理
+    usage: /gcc help
     aliases: [geminicraftchat]
-    permission: gcc.use
-    permission-message: §c你没有权限使用此命令！
+  gcreload:
+    description: 重新加载 GeminiCraftChat 配置
+    usage: /gcreload
+    permission: gcc.admin
 
 permissions:
   gcc.use:
-    description: 允许使用基本命令
+    description: 允许使用基本聊天功能
     default: true
   gcc.admin:
     description: 允许使用管理员命令
@@ -39,7 +34,7 @@ permissions:
     description: 允许删除人设
     default: op
   gcc.bypass_cooldown:
-    description: 允许绕过冷却时间
+    description: 允许绕过聊天冷却
     default: op
   gcc.npc.manage:
     description: 允许管理NPC

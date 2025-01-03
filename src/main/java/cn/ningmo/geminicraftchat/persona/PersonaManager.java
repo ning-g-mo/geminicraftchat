@@ -2,46 +2,108 @@ package cn.ningmo.geminicraftchat.persona;
 
 import cn.ningmo.geminicraftchat.GeminiCraftChat;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Set;
 
 public class PersonaManager {
     private final GeminiCraftChat plugin;
-    private final Map<UUID, String> playerPersonas;
-    
+    private final Map<String, Persona> personas;
+
     public PersonaManager(GeminiCraftChat plugin) {
         this.plugin = plugin;
-        this.playerPersonas = new HashMap<>();
+        this.personas = new HashMap<>();
+        reload();
     }
-    
-    public void setPersona(Player player, String personaName) {
-        if (!personaExists(personaName)) {
-            throw new IllegalArgumentException("人设不存在！");
+
+    /**
+     * 重新加载配置
+     */
+    public void reload() {
+        personas.clear();
+        ConfigurationSection personasSection = plugin.getConfig().getConfigurationSection("personas");
+        if (personasSection != null) {
+            for (String key : personasSection.getKeys(false)) {
+                ConfigurationSection personaSection = personasSection.getConfigurationSection(key);
+                if (personaSection != null) {
+                    Persona persona = new Persona(
+                        key,
+                        personaSection.getString("name", key),
+                        personaSection.getString("description", ""),
+                        personaSection.getString("context", "")
+                    );
+                    personas.put(key, persona);
+                }
+            }
         }
-        playerPersonas.put(player.getUniqueId(), personaName);
     }
-    
-    public String getPersona(Player player) {
-        return playerPersonas.getOrDefault(player.getUniqueId(), "default");
+
+    /**
+     * 获取人设
+     */
+    public Persona getPersona(String key) {
+        return personas.get(key);
     }
-    
-    public boolean personaExists(String name) {
-        ConfigurationSection personas = plugin.getConfig().getConfigurationSection("personas");
-        return personas != null && personas.contains(name);
+
+    /**
+     * 获取所有人设
+     */
+    public Set<String> getPersonaKeys() {
+        return personas.keySet();
     }
-    
-    public void createPersona(String name, String description) {
-        ConfigurationSection personas = plugin.getConfig().getConfigurationSection("personas");
-        if (personas == null) {
-            personas = plugin.getConfig().createSection("personas");
-        }
+
+    /**
+     * 创建新人设
+     */
+    public void createPersona(String key, String name, String description, String context) {
+        Persona persona = new Persona(key, name, description, context);
+        personas.put(key, persona);
         
-        ConfigurationSection persona = personas.createSection(name);
-        persona.set("name", name);
-        persona.set("description", description);
+        // 保存到配置文件
+        ConfigurationSection personaSection = plugin.getConfig()
+            .createSection("personas." + key);
+        personaSection.set("name", name);
+        personaSection.set("description", description);
+        personaSection.set("context", context);
+        plugin.saveConfig();
+    }
+
+    /**
+     * 编辑人设
+     */
+    public void editPersona(String key, String name, String description, String context) {
+        if (!personas.containsKey(key)) {
+            throw new IllegalArgumentException("人设不存在：" + key);
+        }
+
+        Persona persona = new Persona(key, name, description, context);
+        personas.put(key, persona);
+        
+        // 更新配置文件
+        ConfigurationSection personaSection = plugin.getConfig()
+            .getConfigurationSection("personas." + key);
+        if (personaSection == null) {
+            personaSection = plugin.getConfig().createSection("personas." + key);
+        }
+        personaSection.set("name", name);
+        personaSection.set("description", description);
+        personaSection.set("context", context);
+        plugin.saveConfig();
+    }
+
+    /**
+     * 删除人设
+     */
+    public void deletePersona(String key) {
+        if (!personas.containsKey(key)) {
+            throw new IllegalArgumentException("人设不存在：" + key);
+        }
+
+        personas.remove(key);
+        
+        // 从配置文件中删除
+        plugin.getConfig().set("personas." + key, null);
         plugin.saveConfig();
     }
 } 

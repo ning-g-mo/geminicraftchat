@@ -1,151 +1,125 @@
 package cn.ningmo.geminicraftchat.filter;
 
 import cn.ningmo.geminicraftchat.GeminiCraftChat;
-import org.bukkit.configuration.Configuration;
+import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.*;
 
 public class WordFilter {
     private final GeminiCraftChat plugin;
-    private final TrieNode root;
+    private final Map<Character, Map<Character, Object>> wordTree;
     private boolean enabled;
     private String replacement;
-    
-    private static class TrieNode {
-        private final Map<Character, TrieNode> children;
-        private boolean isEndOfWord;
-        
-        public TrieNode() {
-            this.children = new HashMap<>();
-            this.isEndOfWord = false;
-        }
-        
-        public Map<Character, TrieNode> getChildren() {
-            return children;
-        }
-        
-        public boolean isEndOfWord() {
-            return isEndOfWord;
-        }
-        
-        public void setEndOfWord(boolean endOfWord) {
-            isEndOfWord = endOfWord;
-        }
-    }
-    
+
     public WordFilter(GeminiCraftChat plugin) {
         this.plugin = plugin;
-        this.root = new TrieNode();
-        loadConfig();
+        this.wordTree = new HashMap<>();
+        reload();
     }
-    
-    public void loadConfig() {
-        Configuration config = plugin.getConfig();
-        this.enabled = config.getBoolean("word_filter.enabled", true);
-        this.replacement = config.getString("word_filter.replacement", "***");
-        
-        // 清空现有树
-        root.getChildren().clear();
-        
-        // 加载敏感词
-        List<String> words = config.getStringList("word_filter.words");
+
+    public void reload() {
+        ConfigurationSection config = plugin.getConfig().getConfigurationSection("word_filter");
+        if (config == null) {
+            this.enabled = false;
+            this.replacement = "***";
+            return;
+        }
+
+        this.enabled = config.getBoolean("enabled", false);
+        this.replacement = config.getString("replacement", "***");
+
+        // 重建敏感词树
+        wordTree.clear();
+        List<String> words = config.getStringList("words");
         for (String word : words) {
-            if (word == null || word.isEmpty()) continue;
             addWord(word);
         }
     }
-    
+
     private void addWord(String word) {
-        TrieNode current = root;
-        
-        for (char c : word.toCharArray()) {
-            current.getChildren().putIfAbsent(c, new TrieNode());
-            current = current.getChildren().get(c);
+        Map<Character, Object> currentMap = wordTree;
+        for (int i = 0; i < word.length(); i++) {
+            char c = word.charAt(i);
+            Map<Character, Object> nextMap = (Map<Character, Object>) currentMap.get(c);
+            if (nextMap == null) {
+                nextMap = new HashMap<>();
+                currentMap.put(c, nextMap);
+            }
+            currentMap = nextMap;
         }
-        
-        current.setEndOfWord(true);
+        currentMap.put('\0', null); // 结束标记
     }
-    
+
     public String filter(String text) {
         if (!enabled || text == null || text.isEmpty()) {
             return text;
         }
-        
+
         StringBuilder result = new StringBuilder(text);
-        int position = 0;
-        
-        while (position < text.length()) {
-            int matchLength = findMatch(text, position);
-            if (matchLength > 0) {
-                result.replace(position, position + matchLength, replacement);
-                position += matchLength;
-            } else {
-                position++;
+        for (int i = 0; i < text.length(); i++) {
+            int length = checkWord(text, i);
+            if (length > 0) {
+                for (int j = 0; j < length; j++) {
+                    result.setCharAt(i + j, replacement.charAt(Math.min(j, replacement.length() - 1)));
+                }
+                i += length - 1;
             }
         }
-        
         return result.toString();
     }
-    
-    private int findMatch(String text, int start) {
-        TrieNode current = root;
+
+    private int checkWord(String text, int start) {
+        Map<Character, Object> currentMap = wordTree;
         int maxLength = 0;
-        int length = 0;
-        
-        for (int i = start; i < text.length(); i++) {
-            char c = text.charAt(i);
-            
-            if (!current.getChildren().containsKey(c)) {
+        int position = start;
+
+        while (position < text.length()) {
+            Map<Character, Object> nextMap = (Map<Character, Object>) currentMap.get(text.charAt(position));
+            if (nextMap == null) {
                 break;
             }
-            
-            current = current.getChildren().get(c);
-            length++;
-            
-            if (current.isEndOfWord()) {
-                maxLength = length;
+            currentMap = nextMap;
+            position++;
+            if (currentMap.containsKey('\0')) {
+                maxLength = position - start;
             }
         }
-        
+
         return maxLength;
     }
-    
-    public boolean isEnabled() {
-        return enabled;
+
+    public void addWord(String word, boolean save) {
+        addWord(word);
+        if (save) {
+            List<String> words = new ArrayList<>(plugin.getConfig().getStringList("word_filter.words"));
+            if (!words.contains(word)) {
+                words.add(word);
+                plugin.getConfig().set("word_filter.words", words);
+                plugin.saveConfig();
+            }
+        }
     }
-    
+
+    public void removeWord(String word) {
+        List<String> words = new ArrayList<>(plugin.getConfig().getStringList("word_filter.words"));
+        if (words.remove(word)) {
+            plugin.getConfig().set("word_filter.words", words);
+            plugin.saveConfig();
+            reload(); // 重新构建敏感词树
+        }
+    }
+
+    public List<String> getWords() {
+        return plugin.getConfig().getStringList("word_filter.words");
+    }
+
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
         plugin.getConfig().set("word_filter.enabled", enabled);
         plugin.saveConfig();
     }
-    
-    public void addFilterWord(String word) {
-        if (word == null || word.isEmpty()) return;
-        
-        // 添加到树中
-        addWord(word);
-        
-        // 保存到配置文件
-        List<String> words = plugin.getConfig().getStringList("word_filter.words");
-        if (!words.contains(word)) {
-            words.add(word);
-            plugin.getConfig().set("word_filter.words", words);
-            plugin.saveConfig();
-        }
-    }
-    
-    public void removeFilterWord(String word) {
-        if (word == null || word.isEmpty()) return;
-        
-        // 从配置文件中移除
-        List<String> words = plugin.getConfig().getStringList("word_filter.words");
-        if (words.remove(word)) {
-            plugin.getConfig().set("word_filter.words", words);
-            plugin.saveConfig();
-            
-            // 重新构建树
-            loadConfig();
-        }
+
+    public boolean isEnabled() {
+        return enabled;
     }
 } 
