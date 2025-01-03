@@ -7,13 +7,35 @@ import java.util.*;
 
 public class WordFilter {
     private final GeminiCraftChat plugin;
-    private final Map<Character, Map<?, ?>> wordTree;
+    private final TrieNode root;
     private boolean enabled;
     private String replacement;
     
+    private static class TrieNode {
+        private final Map<Character, TrieNode> children;
+        private boolean isEndOfWord;
+        
+        public TrieNode() {
+            this.children = new HashMap<>();
+            this.isEndOfWord = false;
+        }
+        
+        public Map<Character, TrieNode> getChildren() {
+            return children;
+        }
+        
+        public boolean isEndOfWord() {
+            return isEndOfWord;
+        }
+        
+        public void setEndOfWord(boolean endOfWord) {
+            isEndOfWord = endOfWord;
+        }
+    }
+    
     public WordFilter(GeminiCraftChat plugin) {
         this.plugin = plugin;
-        this.wordTree = new HashMap<>();
+        this.root = new TrieNode();
         loadConfig();
     }
     
@@ -23,7 +45,7 @@ public class WordFilter {
         this.replacement = config.getString("word_filter.replacement", "***");
         
         // 清空现有树
-        wordTree.clear();
+        root.getChildren().clear();
         
         // 加载敏感词
         List<String> words = config.getStringList("word_filter.words");
@@ -34,28 +56,14 @@ public class WordFilter {
     }
     
     private void addWord(String word) {
-        Map<Object, Object> currentMap = (Map<Object, Object>) wordTree;
+        TrieNode current = root;
         
-        for (int i = 0; i < word.length(); i++) {
-            char c = word.charAt(i);
-            
-            // 获取当前字符的子节点
-            Map<Object, Object> subMap = (Map<Object, Object>) currentMap.get(c);
-            
-            if (subMap == null) {
-                // 如果子节点不存在，创建新的子节点
-                subMap = new HashMap<>();
-                currentMap.put(c, subMap);
-            }
-            
-            // 移动到下一个节点
-            currentMap = subMap;
-            
-            // 如果是最后一个字符，标记为敏感词结尾
-            if (i == word.length() - 1) {
-                currentMap.put("isEnd", true);
-            }
+        for (char c : word.toCharArray()) {
+            current.getChildren().putIfAbsent(c, new TrieNode());
+            current = current.getChildren().get(c);
         }
+        
+        current.setEndOfWord(true);
     }
     
     public String filter(String text) {
@@ -64,36 +72,42 @@ public class WordFilter {
         }
         
         StringBuilder result = new StringBuilder(text);
-        Map<Object, Object> currentMap;
-        int begin = 0;
         int position = 0;
         
         while (position < text.length()) {
-            char c = text.charAt(position);
-            currentMap = (Map<Object, Object>) wordTree.get(c);
-            
-            if (currentMap == null) {
-                position++;
-                begin = position;
-                continue;
-            }
-            
-            // 检查是否是敏感词结尾
-            if (currentMap.containsKey("isEnd")) {
-                // 替换敏感词
-                int length = position - begin + 1;
-                result.replace(begin, begin + length, replacement);
-                
-                // 移动指针
-                position++;
-                begin = position;
+            int matchLength = findMatch(text, position);
+            if (matchLength > 0) {
+                result.replace(position, position + matchLength, replacement);
+                position += matchLength;
             } else {
-                // 继续检查下一个字符
                 position++;
             }
         }
         
         return result.toString();
+    }
+    
+    private int findMatch(String text, int start) {
+        TrieNode current = root;
+        int maxLength = 0;
+        int length = 0;
+        
+        for (int i = start; i < text.length(); i++) {
+            char c = text.charAt(i);
+            
+            if (!current.getChildren().containsKey(c)) {
+                break;
+            }
+            
+            current = current.getChildren().get(c);
+            length++;
+            
+            if (current.isEndOfWord()) {
+                maxLength = length;
+            }
+        }
+        
+        return maxLength;
     }
     
     public boolean isEnabled() {

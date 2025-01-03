@@ -2,6 +2,8 @@ package cn.ningmo.geminicraftchat;
 
 import cn.ningmo.geminicraftchat.api.GeminiAPI;
 import cn.ningmo.geminicraftchat.chat.ChatHistory;
+import cn.ningmo.geminicraftchat.command.GCCCommand;
+import cn.ningmo.geminicraftchat.command.GCCTabCompleter;
 import cn.ningmo.geminicraftchat.persona.PersonaManager;
 import cn.ningmo.geminicraftchat.platform.Platform;
 import cn.ningmo.geminicraftchat.platform.impl.BukkitPlatform;
