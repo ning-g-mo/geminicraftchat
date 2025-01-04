@@ -36,7 +36,14 @@ api:
 
 # 聊天设置
 chat:
+  # 触发词设置
   trigger: "ai"  # 默认触发词
+  trigger_words:  # 额外触发词列表
+    - "ai"
+    - "人工智能"
+    - "机器人"
+    - "@ai"
+  # 聊天冷却设置
   cooldown: 10000  # 消息冷却时间（毫秒）
   max_history: 10  # 每个玩家保存的最大历史消息数
   max_length: 500  # 最大消息长度
@@ -44,15 +51,19 @@ chat:
   independent_chat: true
   # 消息格式
   format:
-    thinking: "§7[AI] §f正在思考中..."
-    response: "§7[AI] §f%s"
-    error: "§c[AI] 发生错误：%s"
+    thinking: "§7[AI] §f正在思考中..."  # 思考中提示
+    response: "§7[AI] §f%s"  # AI回复格式
+    error: "§c[AI] 发生错误：%s"  # 错误提示格式
+    npc_thinking: "§7[%s] §f正在思考中..."  # NPC思考中提示
+    npc_response: "§7[%s] §f%s"  # NPC回复格式
+    npc_error: "§c[%s] 发生错误：%s"  # NPC错误提示格式
+  # 命令别名
   commands:
-    switch_persona: "切换人设"
-    set_persona: "设置人设"
-    change_model: "切换模型"
-    clear_history: "清除历史"
-    clear_all_history: "清除所有历史记录"  # 管理员命令
+    switch_persona: ["切换人设", "换人设"]
+    set_persona: ["设置人设", "改变人设"]
+    change_model: ["切换模型", "改变模型"]
+    clear_history: ["清除历史", "清空历史"]
+    clear_all_history: ["清除所有历史", "清空所有历史"]
 
 # 伪人系统设置
 npc:
@@ -68,12 +79,17 @@ npc:
       name: "爱丽丝"
       description: "一个活泼可爱的女孩"
       personality: "你是一个名叫爱丽丝的16岁女孩，性格活泼开朗，说话方式可爱俏皮。你喜欢用可爱的语气和表情符号交谈。"
-      trigger_words: ["你好", "早上好", "晚上好"]
+      trigger_words: ["爱丽丝", "alice", "小爱"]
     bob:
       name: "鲍勃"
       description: "一个严肃的管理员"
       personality: "你是一个名叫鲍勃的服务器管理员，性格严谨认真。你说话方式正式，总是以帮助他人为己任。"
-      trigger_words: ["帮助", "规则", "问题"]
+      trigger_words: ["鲍勃", "bob", "管理员"]
+    cat:
+      name: "白露猫"
+      description: "一只可爱的猫娘"
+      personality: "你是一只名叫白露猫的猫娘，性格温柔可爱。说话时喜欢在句尾加上喵~，会用可爱的语气和表情符号交谈。"
+      trigger_words: ["白露猫", "猫娘", "喵"]
 
 # 权限设置
 permissions:
@@ -96,6 +112,14 @@ personas:
     name: "默认助手"
     description: "一个友好的AI助手"
     context: "你是一个友好的AI助手，会用简单易懂的方式回答问题。"
+  teacher:
+    name: "老师"
+    description: "一个耐心的教师"
+    context: "你是一个耐心的老师，擅长用通俗易懂的方式解释复杂的概念。"
+  friend:
+    name: "朋友"
+    description: "一个亲切的朋友"
+    context: "你是一个亲切的朋友，会用轻松愉快的方式与人交谈，给出建议和支持。"
 
 # 敏感词设置
 word_filter:
