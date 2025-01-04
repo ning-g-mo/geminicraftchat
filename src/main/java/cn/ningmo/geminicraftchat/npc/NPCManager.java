@@ -75,12 +75,12 @@ public class NPCManager {
     /**
      * 添加NPC记忆
      */
-    public void addMemory(String npcId, String memory) {
+    public void addMemory(String npcId, String message) {
         if (!enableMemory) return;
 
         npcMemory.computeIfAbsent(npcId, k -> new ArrayList<>());
         List<String> memories = npcMemory.get(npcId);
-        memories.add(memory);
+        memories.add(message);
 
         while (memories.size() > maxMemory) {
             memories.remove(0);
@@ -90,8 +90,16 @@ public class NPCManager {
     /**
      * 获取NPC记忆
      */
-    public List<String> getMemory(String npcId) {
-        return npcMemory.getOrDefault(npcId, new ArrayList<>());
+    public List<NPCMemory.Interaction> getMemory(String npcId) {
+        List<String> memories = npcMemory.getOrDefault(npcId, new ArrayList<>());
+        List<NPCMemory.Interaction> interactions = new ArrayList<>();
+        for (String memory : memories) {
+            String[] parts = memory.split(":", 2);
+            if (parts.length == 2) {
+                interactions.add(new NPCMemory.Interaction(parts[0].trim(), parts[1].trim()));
+            }
+        }
+        return interactions;
     }
 
     /**

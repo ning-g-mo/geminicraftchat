@@ -6,6 +6,7 @@ import cn.ningmo.geminicraftchat.filter.WordFilter;
 import cn.ningmo.geminicraftchat.log.ChatLogger;
 import cn.ningmo.geminicraftchat.npc.NPC;
 import cn.ningmo.geminicraftchat.npc.NPCManager;
+import cn.ningmo.geminicraftchat.npc.NPCMemory;
 import cn.ningmo.geminicraftchat.persona.Persona;
 import cn.ningmo.geminicraftchat.persona.PersonaManager;
 import cn.ningmo.geminicraftchat.response.GeminiResponse;
@@ -14,6 +15,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
+import java.util.List;
 import java.util.Optional;
 
 public class ChatListener implements Listener {
@@ -142,13 +144,27 @@ public class ChatListener implements Listener {
 
     private void handleNPCResponse(Player player, String message, NPC npc) {
         // 发送思考中消息
-        String thinkingMessage = plugin.getConfig().getString("chat.format.thinking", "§7[" + npc.getName() + "] §f正在思考中...");
+        String thinkingMessage = String.format(
+            plugin.getConfig().getString("chat.format.npc_thinking", "§7[%s] §f正在思考中..."),
+            npc.getName()
+        );
         player.sendMessage(thinkingMessage);
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
-                // 获取NPC的历史记录
-                String prompt = npc.getPrompt(message, npcManager.getMemory(npc.getId()));
+                // 获取NPC的历史记录和构建提示语
+                String prompt = npc.getPersonality() + "\n\n";
+                if (plugin.getConfig().getBoolean("npc.enable_memory", true)) {
+                    List<NPCMemory.Interaction> memory = npcManager.getMemory(npc.getId());
+                    if (!memory.isEmpty()) {
+                        prompt += "历史对话:\n";
+                        for (NPCMemory.Interaction interaction : memory) {
+                            prompt += "用户: " + interaction.getPlayerMessage() + "\n";
+                            prompt += npc.getName() + ": " + interaction.getNpcResponse() + "\n";
+                        }
+                    }
+                }
+                prompt += "\n用户: " + message;
 
                 // 调用API获取响应
                 GeminiResponse response = geminiAPI.chat(prompt);
@@ -157,7 +173,8 @@ public class ChatListener implements Listener {
                 }
 
                 String npcResponse = response.getMessage();
-                npcManager.addMemory(npc.getId(), message, npcResponse);
+                // 添加到NPC记忆
+                npcManager.addMemory(npc.getId(), message);
 
                 // 记录聊天日志
                 chatLogger.logChat(player, message, npcResponse, true);
@@ -171,7 +188,7 @@ public class ChatListener implements Listener {
 
             } catch (RuntimeException e) {
                 chatLogger.logError(player, message, e);
-                String errorFormat = plugin.getConfig().getString("chat.format.error", "§c[%s] 发生错误：%s");
+                String errorFormat = plugin.getConfig().getString("chat.format.npc_error", "§c[%s] 发生错误：%s");
                 String errorMessage = String.format(errorFormat, npc.getName(), e.getMessage());
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
                     player.sendMessage(errorMessage);
