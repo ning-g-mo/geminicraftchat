@@ -34,7 +34,10 @@ public class DirectAPIClient {
                     }]
                 }],
                 "generationConfig": {
-                    "temperature": %.2f
+                    "temperature": %.2f,
+                    "maxOutputTokens": 1024,
+                    "topP": 0.95,
+                    "topK": 40
                 }
             }""", 
             objectMapper.valueToTree(messages).toString(),
@@ -55,13 +58,13 @@ public class DirectAPIClient {
                         TimeUnit.MILLISECONDS.sleep(retryDelay);
                         continue;
                     }
-                    return GeminiResponse.error("API request failed: " + error);
+                    return GeminiResponse.error("API请求失败: " + error);
                 }
 
                 JsonNode jsonResponse = objectMapper.readTree(response.body().string());
                 JsonNode candidates = jsonResponse.path("candidates");
                 if (candidates.isEmpty()) {
-                    return GeminiResponse.error("No response from API");
+                    return GeminiResponse.error("API未返回有效响应");
                 }
 
                 String content = candidates.path(0)
@@ -73,21 +76,24 @@ public class DirectAPIClient {
 
                 return GeminiResponse.success(content);
 
-            } catch (IOException | InterruptedException e) {
+            } catch (IOException e) {
                 if (attempt < maxRetries) {
                     try {
                         TimeUnit.MILLISECONDS.sleep(retryDelay);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
-                        return GeminiResponse.error("Request interrupted: " + e.getMessage());
+                        return GeminiResponse.error("请求被中断: " + e.getMessage());
                     }
                     continue;
                 }
-                return GeminiResponse.error("Request failed: " + e.getMessage());
+                return GeminiResponse.error("请求失败: " + e.getMessage());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return GeminiResponse.error("请求被中断: " + e.getMessage());
             }
         }
 
-        return GeminiResponse.error("Max retries exceeded");
+        return GeminiResponse.error("已达到最大重试次数");
     }
 
     public static DirectAPIClient create(String apiKey, int maxRetries, long retryDelay) {
@@ -95,6 +101,7 @@ public class DirectAPIClient {
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build();
             
         ObjectMapper objectMapper = new ObjectMapper();

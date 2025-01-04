@@ -6,7 +6,10 @@ api:
   key: "your-api-key-here"  # API密钥（建议使用环境变量 GEMINI_API_KEY）
   timeout: 30  # 请求超时时间（秒）
   max_retries: 3  # 最大重试次数
-  retry_delay: 1000  # 重试间隔（毫秒）
+  retry_delay: 2000  # 重试间隔（毫秒）
+  connect_timeout: 30  # 连接超时时间（秒）
+  read_timeout: 30  # 读取超时时间（秒）
+  write_timeout: 30  # 写入超时时间（秒）
   # 中转API设置
   proxy:
     enabled: false  # 是否启用中转API

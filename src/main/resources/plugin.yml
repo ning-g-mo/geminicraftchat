@@ -9,10 +9,11 @@ commands:
   gcc:
     description: GeminiCraftChat 主命令
     usage: /gcc help
-    aliases: [geminicraftchat]
+    aliases: [geminicraftchat, 人工智能, ai, 聊天]
   gcreload:
     description: 重新加载 GeminiCraftChat 配置
     usage: /gcreload
+    aliases: [重载ai, 重载人工智能]
     permission: gcc.admin
 
 permissions:
