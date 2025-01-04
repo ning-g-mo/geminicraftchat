@@ -1,123 +1,98 @@
 package cn.ningmo.geminicraftchat;
 
-import cn.ningmo.geminicraftchat.api.GeminiResponse;
-import cn.ningmo.geminicraftchat.npc.NPC;
-import cn.ningmo.geminicraftchat.platform.Platform;
+import cn.ningmo.geminicraftchat.api.GeminiAPI;
+import cn.ningmo.geminicraftchat.chat.ChatHistory;
+import cn.ningmo.geminicraftchat.chat.RateLimiter;
+import cn.ningmo.geminicraftchat.filter.WordFilter;
+import cn.ningmo.geminicraftchat.log.ChatLogger;
+import cn.ningmo.geminicraftchat.persona.Persona;
+import cn.ningmo.geminicraftchat.persona.PersonaManager;
+import cn.ningmo.geminicraftchat.response.GeminiResponse;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
-import java.util.Optional;
-
 public class ChatListener implements Listener {
     private final GeminiCraftChat plugin;
-    private final Platform platform;
-    
+    private final GeminiAPI geminiAPI;
+    private final ChatHistory chatHistory;
+    private final RateLimiter rateLimiter;
+    private final PersonaManager personaManager;
+    private final ChatLogger chatLogger;
+    private final WordFilter wordFilter;
+
     public ChatListener(GeminiCraftChat plugin) {
         this.plugin = plugin;
-        this.platform = plugin.getPlatform();
+        this.geminiAPI = plugin.getGeminiAPI();
+        this.chatHistory = plugin.getChatHistory();
+        this.rateLimiter = plugin.getRateLimiter();
+        this.personaManager = plugin.getPersonaManager();
+        this.chatLogger = plugin.getChatLogger();
+        this.wordFilter = plugin.getWordFilter();
     }
-    
+
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
-        String message = event.getMessage();
         Player player = event.getPlayer();
-        
-        // 检查是否触发伪人
-        Optional<NPC> npc = plugin.getNPCManager().tryTriggerNPC(message);
-        if (npc.isPresent()) {
-            handleNPCResponse(player, message, npc.get());
+        String message = event.getMessage();
+
+        // 检查速率限制
+        if (!rateLimiter.tryAcquire(player)) {
+            long remainingCooldown = rateLimiter.getRemainingCooldown(player);
+            player.sendMessage("§c请等待 " + (remainingCooldown / 1000) + " 秒后再发送消息。");
+            event.setCancelled(true);
             return;
         }
-        
-        // 原有的AI聊天逻辑
-        String trigger = plugin.getConfig().getString("chat.trigger");
-        if (!message.startsWith(trigger)) {
-            return;
-        }
-        
-        event.setCancelled(true);
-        
-        // 检查冷却时间
-        if (!player.hasPermission("gcc.bypass_cooldown")) {
-            if (!plugin.getRateLimiter().tryAcquire(player.getUniqueId())) {
-                long remaining = plugin.getRateLimiter().getRemainingCooldown(player.getUniqueId()) / 1000;
-                player.sendMessage(String.format("§c请等待 %d 秒后再次使用！", remaining));
-                return;
-            }
-        }
-        
-        String question = message.substring(trigger.length()).trim();
-        
-        if (question.isEmpty()) {
-            player.sendMessage("§c请输入要询问的内容！");
-            return;
-        }
-        
-        // 检查消息长度
-        int maxLength = plugin.getConfig().getInt("chat.max_length", 500);
-        if (question.length() > maxLength) {
-            player.sendMessage(String.format("§c消息长度超过限制！最大长度：%d", maxLength));
-            return;
-        }
-        
-        // 敏感词过滤
-        final String filteredQuestion = plugin.getWordFilter().filter(question);
-        if (!filteredQuestion.equals(question)) {
+
+        // 过滤敏感词
+        String filteredMessage = wordFilter.filter(message);
+        if (!filteredMessage.equals(message)) {
             player.sendMessage("§c你的消息包含敏感词，已被过滤。");
+            event.setMessage(filteredMessage);
         }
-        
-        // 获取玩家当前使用的人设
-        String persona = plugin.getPersonaManager().getPersona(player);
-        
-        // 使用平台抽象发送消息
-        String thinkingFormat = plugin.getConfig().getString("chat.format.thinking", "§7[AI] §f正在思考中...");
-        platform.sendMessage(player.getUniqueId(), thinkingFormat);
-        
-        // 异步调用API
-        plugin.getGeminiAPI().chatAsync(filteredQuestion, persona)
-            .thenAccept(response -> {
-                platform.runSync(() -> {
-                    if (response.isSuccess()) {
-                        String aiResponse = response.getMessage();
-                        // 对AI响应也进行敏感词过滤
-                        final String filteredResponse = plugin.getWordFilter().filter(aiResponse);
-                        
-                        String responseFormat = plugin.getConfig().getString("chat.format.response", "§7[AI] §f%s");
-                        platform.sendMessage(player.getUniqueId(), 
-                            String.format(responseFormat, filteredResponse));
-                        plugin.getChatHistory().addMessage(
-                            player.getUniqueId(), 
-                            filteredQuestion, 
-                            filteredResponse
-                        );
-                        // 记录成功的对话
-                        plugin.getChatLogger().logChat(player, filteredQuestion, filteredResponse, true);
-                    } else {
-                        String errorFormat = plugin.getConfig().getString("chat.format.error", "§c[AI] 发生错误：%s");
-                        platform.sendMessage(player.getUniqueId(), 
-                            String.format(errorFormat, response.getError()));
-                        // 记录错误
-                        plugin.getChatLogger().logError(player, filteredQuestion, 
-                            new RuntimeException(response.getError()));
-                    }
+
+        // 获取玩家的人设
+        Persona persona = personaManager.getPersona(player);
+        String prompt = persona != null ? persona.getPrompt() : "";
+
+        // 获取聊天历史
+        String history = String.join("\n", chatHistory.getHistory(player));
+
+        // 构建完整的消息
+        String fullMessage = (prompt.isEmpty() ? "" : prompt + "\n") +
+                           (history.isEmpty() ? "" : "Previous messages:\n" + history + "\n") +
+                           "Player: " + message;
+
+        // 异步处理AI响应
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                // 记录玩家消息
+                chatHistory.addMessage(player, "Player: " + message);
+
+                // 调用API获取响应
+                GeminiResponse response = geminiAPI.chat(fullMessage);
+                if (!response.isSuccess()) {
+                    throw new RuntimeException(response.getError());
+                }
+
+                String aiResponse = response.getMessage();
+                chatHistory.addMessage(player, "AI: " + aiResponse);
+
+                // 记录聊天日志
+                chatLogger.logChat(player, message, aiResponse, false);
+
+                // 发送响应给玩家
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    player.sendMessage("§b[AI] §f" + aiResponse);
                 });
-            });
-    }
-    
-    private void handleNPCResponse(Player player, String message, NPC npc) {
-        // 发送思考消息
-        platform.sendMessage(player.getUniqueId(), 
-            String.format("§d[%s] §7正在思考...", npc.getName()));
-        
-        // 生成AI响应
-        plugin.getNPCManager().generateResponse(player.getUniqueId(), npc, message)
-            .thenAccept(response -> {
-                platform.runSync(() -> {
-                    platform.sendMessage(player.getUniqueId(), 
-                        String.format("§d[%s] §f%s", npc.getName(), response));
+
+            } catch (RuntimeException e) {
+                chatLogger.logError(player, message, e);
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    player.sendMessage("§c处理消息时出错：" + e.getMessage());
                 });
-            });
+            }
+        });
     }
 } 

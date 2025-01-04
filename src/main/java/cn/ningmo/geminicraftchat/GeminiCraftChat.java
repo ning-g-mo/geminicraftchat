@@ -10,12 +10,12 @@ import cn.ningmo.geminicraftchat.log.DebugLogger;
 import cn.ningmo.geminicraftchat.npc.NPCManager;
 import cn.ningmo.geminicraftchat.persona.PersonaManager;
 import cn.ningmo.geminicraftchat.filter.WordFilter;
-import lombok.Getter;
+import cn.ningmo.geminicraftchat.platform.Platform;
+import cn.ningmo.geminicraftchat.platform.impl.BukkitPlatform;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 
-@Getter
 public class GeminiCraftChat extends JavaPlugin {
     private GeminiAPI geminiAPI;
     private ChatHistory chatHistory;
@@ -25,6 +25,7 @@ public class GeminiCraftChat extends JavaPlugin {
     private DebugLogger debugLogger;
     private ChatLogger chatLogger;
     private WordFilter wordFilter;
+    private Platform platform;
 
     @Override
     public void onEnable() {
@@ -45,6 +46,7 @@ public class GeminiCraftChat extends JavaPlugin {
     }
     
     private void initComponents() {
+        this.platform = new BukkitPlatform(this);
         this.debugLogger = new DebugLogger(this);
         this.chatLogger = new ChatLogger(this);
         this.wordFilter = new WordFilter(this);
@@ -100,4 +102,15 @@ public class GeminiCraftChat extends JavaPlugin {
         
         getLogger().info("插件重载完成！");
     }
+
+    // Getters
+    public GeminiAPI getGeminiAPI() { return geminiAPI; }
+    public ChatHistory getChatHistory() { return chatHistory; }
+    public RateLimiter getRateLimiter() { return rateLimiter; }
+    public PersonaManager getPersonaManager() { return personaManager; }
+    public NPCManager getNpcManager() { return npcManager; }
+    public DebugLogger getDebugLogger() { return debugLogger; }
+    public ChatLogger getChatLogger() { return chatLogger; }
+    public WordFilter getWordFilter() { return wordFilter; }
+    public Platform getPlatform() { return platform; }
 } 

@@ -1,7 +1,7 @@
 package cn.ningmo.geminicraftchat.log;
 
 import cn.ningmo.geminicraftchat.GeminiCraftChat;
-import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Player;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
@@ -9,49 +9,65 @@ import java.util.Date;
 
 public class ChatLogger {
     private final GeminiCraftChat plugin;
-    private final File logFolder;
     private final SimpleDateFormat dateFormat;
+    private File logFile;
     private boolean enabled;
-    private String logFormat;
 
     public ChatLogger(GeminiCraftChat plugin) {
         this.plugin = plugin;
-        this.logFolder = new File(plugin.getDataFolder(), "logs");
         this.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         reload();
-        
-        if (!logFolder.exists()) {
-            logFolder.mkdirs();
-        }
     }
 
     public void reload() {
-        ConfigurationSection config = plugin.getConfig().getConfigurationSection("chat_log");
-        if (config == null) {
-            this.enabled = false;
-            this.logFormat = "[%time%] %player%: %message% -> %response%";
-            return;
+        enabled = plugin.getConfig().getBoolean("logging.enabled", true);
+        if (enabled) {
+            String logPath = plugin.getConfig().getString("logging.file", "chat.log");
+            logFile = new File(plugin.getDataFolder(), logPath);
+            try {
+                if (!logFile.exists()) {
+                    logFile.getParentFile().mkdirs();
+                    logFile.createNewFile();
+                }
+            } catch (IOException e) {
+                plugin.getLogger().severe("无法创建日志文件: " + e.getMessage());
+                enabled = false;
+            }
         }
-
-        this.enabled = config.getBoolean("enabled", false);
-        this.logFormat = config.getString("format", "[%time%] %player%: %message% -> %response%");
     }
 
-    public void logChat(String playerName, String message, String response) {
+    public void logChat(Player player, String message, String response, boolean isNPC) {
         if (!enabled) return;
 
-        String fileName = String.format("chat-%s.log", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-        File logFile = new File(logFolder, fileName);
+        String timestamp = dateFormat.format(new Date());
+        String playerName = player.getName();
+        String playerUUID = player.getUniqueId().toString();
+        String logEntry = String.format("[%s] %s (%s): %s%n", timestamp, playerName, playerUUID, message);
+        if (response != null) {
+            logEntry += String.format("[%s] %s: %s%n", timestamp, isNPC ? "NPC" : "AI", response);
+        }
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(logFile, true))) {
-            String logEntry = logFormat
-                .replace("%time%", dateFormat.format(new Date()))
-                .replace("%player%", playerName)
-                .replace("%message%", message)
-                .replace("%response%", response);
-            writer.println(logEntry);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(logFile, true))) {
+            writer.write(logEntry);
         } catch (IOException e) {
-            plugin.getLogger().warning("无法写入聊天日志: " + e.getMessage());
+            plugin.getLogger().severe("无法写入日志: " + e.getMessage());
         }
     }
-} 
+
+    public void logError(Player player, String message, RuntimeException error) {
+        if (!enabled) return;
+
+        String timestamp = dateFormat.format(new Date());
+        String playerName = player.getName();
+        String playerUUID = player.getUniqueId().toString();
+        String logEntry = String.format("[%s] ERROR - %s (%s): %s%n", timestamp, playerName, playerUUID, message);
+        logEntry += String.format("[%s] Exception: %s%n", timestamp, error.getMessage());
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(logFile, true))) {
+            writer.write(logEntry);
+            error.printStackTrace(new PrintWriter(writer));
+        } catch (IOException e) {
+            plugin.getLogger().severe("无法写入错误日志: " + e.getMessage());
+        }
+    }
+}

@@ -10,12 +10,22 @@ public class NPC {
     private final String personality;
     private final List<String> triggerWords;
     
-    public NPC(String id, ConfigurationSection config) {
+    public NPC(String id, String name, String description, String personality, List<String> triggerWords) {
         this.id = id;
-        this.name = config.getString("name");
-        this.description = config.getString("description");
-        this.personality = config.getString("personality");
-        this.triggerWords = config.getStringList("trigger_words");
+        this.name = name;
+        this.description = description;
+        this.personality = personality;
+        this.triggerWords = new ArrayList<>(triggerWords);
+    }
+    
+    public NPC(String id, ConfigurationSection config) {
+        this(
+            id,
+            config.getString("name", id),
+            config.getString("description", ""),
+            config.getString("personality", ""),
+            config.getStringList("trigger_words")
+        );
     }
     
     public boolean shouldTrigger(String message) {
@@ -48,4 +58,5 @@ public class NPC {
     public String getName() { return name; }
     public String getDescription() { return description; }
     public String getPersonality() { return personality; }
+    public List<String> getTriggerWords() { return new ArrayList<>(triggerWords); }
 } 

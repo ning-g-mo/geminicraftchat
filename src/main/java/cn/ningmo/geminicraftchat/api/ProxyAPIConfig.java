@@ -1,12 +1,9 @@
 package cn.ningmo.geminicraftchat.api;
 
-import lombok.Data;
 import org.bukkit.configuration.ConfigurationSection;
-
 import java.util.HashMap;
 import java.util.Map;
 
-@Data
 public class ProxyAPIConfig {
     private boolean enabled;
     private String url;
@@ -15,18 +12,44 @@ public class ProxyAPIConfig {
     private RequestFormat requestFormat;
     private ResponseFormat responseFormat;
 
-    @Data
     public static class RequestFormat {
         private String model;
         private String messages;
         private String temperature;
+
+        // Getters and Setters
+        public String getModel() { return model; }
+        public void setModel(String model) { this.model = model; }
+        public String getMessages() { return messages; }
+        public void setMessages(String messages) { this.messages = messages; }
+        public String getTemperature() { return temperature; }
+        public void setTemperature(String temperature) { this.temperature = temperature; }
     }
 
-    @Data
     public static class ResponseFormat {
         private String contentPath;
         private String errorPath;
+
+        // Getters and Setters
+        public String getContentPath() { return contentPath; }
+        public void setContentPath(String contentPath) { this.contentPath = contentPath; }
+        public String getErrorPath() { return errorPath; }
+        public void setErrorPath(String errorPath) { this.errorPath = errorPath; }
     }
+
+    // Getters and Setters
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public String getUrl() { return url; }
+    public void setUrl(String url) { this.url = url; }
+    public String getMethod() { return method; }
+    public void setMethod(String method) { this.method = method; }
+    public Map<String, String> getHeaders() { return headers; }
+    public void setHeaders(Map<String, String> headers) { this.headers = headers; }
+    public RequestFormat getRequestFormat() { return requestFormat; }
+    public void setRequestFormat(RequestFormat requestFormat) { this.requestFormat = requestFormat; }
+    public ResponseFormat getResponseFormat() { return responseFormat; }
+    public void setResponseFormat(ResponseFormat responseFormat) { this.responseFormat = responseFormat; }
 
     public static ProxyAPIConfig fromConfig(ConfigurationSection config) {
         if (config == null) return null;

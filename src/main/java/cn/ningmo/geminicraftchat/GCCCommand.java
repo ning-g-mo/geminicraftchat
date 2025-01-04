@@ -53,7 +53,7 @@ public class GCCCommand implements CommandExecutor {
                         player.sendMessage("§c你没有权限执行此命令！");
                     }
                 } else {
-                    plugin.getChatHistory().clearHistory(player.getUniqueId());
+                    plugin.getChatHistory().clearHistory(player);
                     player.sendMessage("§a已清除你的聊天历史！");
                 }
                 break;

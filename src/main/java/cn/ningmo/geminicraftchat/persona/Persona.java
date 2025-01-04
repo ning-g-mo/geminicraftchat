@@ -1,21 +1,36 @@
 package cn.ningmo.geminicraftchat.persona;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
-@Getter
-@RequiredArgsConstructor
 public class Persona {
-    private final String id;
-    private final String name;
-    private final String description;
-    private final String context;
+    private String id;
+    private String name;
+    private String description;
+    private String prompt;
+    private String greeting;
 
-    public String getPrompt(String message) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append(context).append("\n\n");
-        prompt.append("用户: ").append(message).append("\n");
-        prompt.append("助手: ");
-        return prompt.toString();
+    public Persona(String id, String name, String description, String prompt, String greeting) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.prompt = prompt;
+        this.greeting = greeting;
     }
-} 
+
+    // Getters
+    public String getId() { return id; }
+    public String getName() { return name; }
+    public String getDescription() { return description; }
+    public String getPrompt() { return prompt; }
+    public String getGreeting() { return greeting; }
+
+    // Setters
+    public void setId(String id) { this.id = id; }
+    public void setName(String name) { this.name = name; }
+    public void setDescription(String description) { this.description = description; }
+    public void setPrompt(String prompt) { this.prompt = prompt; }
+    public void setGreeting(String greeting) { this.greeting = greeting; }
+
+    @Override
+    public String toString() {
+        return name;
+    }
+}

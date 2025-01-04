@@ -5,9 +5,10 @@ import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.*;
 
+@SuppressWarnings("unchecked")
 public class WordFilter {
     private final GeminiCraftChat plugin;
-    private final Map<Character, Map<Character, Object>> wordTree;
+    private final Map<Character, Object> wordTree;
     private boolean enabled;
     private String replacement;
 
@@ -88,6 +89,14 @@ public class WordFilter {
         return maxLength;
     }
 
+    public void addFilterWord(String word) {
+        addWord(word, true);
+    }
+
+    public void removeFilterWord(String word) {
+        removeWord(word);
+    }
+
     public void addWord(String word, boolean save) {
         addWord(word);
         if (save) {
@@ -122,4 +131,4 @@ public class WordFilter {
     public boolean isEnabled() {
         return enabled;
     }
-} 
+}

@@ -1,8 +1,5 @@
 package cn.ningmo.geminicraftchat.response;
 
-import lombok.Getter;
-
-@Getter
 public class GeminiResponse {
     private final boolean success;
     private final String message;

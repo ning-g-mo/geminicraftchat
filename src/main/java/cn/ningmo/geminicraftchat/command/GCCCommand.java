@@ -165,7 +165,7 @@ public class GCCCommand implements CommandExecutor {
                 player.sendMessage("§c你没有权限执行此命令！");
             }
         } else {
-            plugin.getChatHistory().clearHistory(player.getUniqueId());
+            plugin.getChatHistory().clearHistory(player);
             player.sendMessage("§a已清除你的聊天历史！");
         }
     }
@@ -201,7 +201,10 @@ public class GCCCommand implements CommandExecutor {
                 break;
                 
             case "list":
-                // TODO: 显示敏感词列表
+                player.sendMessage("§6=== 敏感词列表 ===");
+                for (String word : plugin.getWordFilter().getWords()) {
+                    player.sendMessage("§7- " + word);
+                }
                 break;
                 
             case "enable":
@@ -219,4 +222,4 @@ public class GCCCommand implements CommandExecutor {
                 break;
         }
     }
-} 
+}
